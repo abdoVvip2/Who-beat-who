@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة: من يهزم من؟ (ذكاء اصطناعي)</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            font-family: Tahoma, sans-serif;
+            text-align: center;
+            padding: 20px;
+            direction: rtl;
+        }
+        .header {
+            background-color: #0057B8;
+            color: white;
+            padding: 15px;
+            font-size: 24px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .element {
+            font-size: 60px;
+ Mannheim, Germany
+            margin: 20px 0;
+            transition: transform 0.3s;
+        }
+        input[type="text"] {
+            padding: 10px;
+            font-size: 18px;
+            width: 60%;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 18px;
+            margin-top: 10px;
+            background-color: #0057B8;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #003e8c;
+        }
+        .result {
+            font-size: 20px;
+            margin-top: 20px;
+            color: #333;
+            min-height: 50px;
+        }
+        .emoji-hint {
+            font-size: 24px;
+            margin-top: 10px;
+            color: #555;
+        }
+        .score {
+            font-size: 18px;
+            margin-top: 15px;
+            color: #0057B8;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">لعبة: من يهزم من؟ (ذكاء اصطناعي)</div>
+    <div class="element" id="currentElement">المطور🧑🏽‍💻</div>
+    <input type="text" id="userInput" placeholder="أدخل شيئًا ليهزم الصخرة">
+    <br>
+    <button onclick="checkWithAI()">تحقق بالذكاء الاصطناعي</button>
+    <div class="result" id="result"></div>
+    <div class="emoji-hint" id="hint"></div>
+    <div class="score" id="score">سلسلة الفوز الحالية: 0 | أعلى سلسلة: 0</div>
+
+    <script>
+        const apiKey = 'AIzaSyDTmHB9SRj47W8KBkn1SzD7-beJRcq284E'; // استبدل بمفتاح API صالح
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
+        let current = "المطور";
+        let currentEmoji = "🧑🏽‍💻";
+        let currentStreak = 0;
+        let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0;
+        const emojiMap = {
+            "صخرة": "🪨",
+            "ورقة": "📄",
+            "مقص": "✂️",
+            "نار": "🔥",
+            "ماء": "💧",
+            "هواء": "🌬️",
+            "شجرة": "🌳",
+            "رجل": "👨",
+            "حيوان": "🐾"
+        };
+
+        // تحديث عرض العدادات
+        function updateScoreDisplay() {
+            document.getElementById("score").innerHTML = `سلسلة الفوز الحالية: ${currentStreak} | أعلى سلسلة: ${highScore}`;
+        }
+
+        // تهيئة العرض عند التحميل
+        updateScoreDisplay();
+
+        function checkWithAI() {
+            const input = document.getElementById("userInput").value.trim();
+            const result = document.getElementById("result");
+            const hint = document.getElementById("hint");
+            if (!input) {
+                result.innerHTML = "يرجى إدخال شيء!";
+                return;
+            }
+
+            const userChoice = input;
+            let emoji = emojiMap[userChoice] || null;
+
+            const prompt = `أنا أقوم بلعبة حيث يجب على المستخدم اختيار شيء يمكنه التغلب على: '${current}'. إذا أدخل المستخدم: '${userChoice}', قم بالتالي:
+            1. حدد إن كان هذا سيفوز أو يخسر ولماذا، بجملة من 1 إلى 3 أسطر، بالعربية.
+            2. اقترح إيموجي مناسب لـ '${userChoice}'. إذا كان الإدخال مشابهًا لعنصر معروف (مثل "حصاة" مشابه لـ "صخرة")، استخدم إيموجي العنصر الأقرب (مثل 🪨 لـ "حصاة").
+            الرد بصيغة: "النتيجة: [النص]. الفوز: [صحيح/خطأ]. الإيموجي: [الإيموجي]"`;
+
+            result.innerHTML = "جارٍ التفكير...";
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            })
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`خطأ HTTP! الحالة: ${res.status}`);
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    console.log("API Response:", data); // للتصحيح
+                    if (!data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        throw new Error("استجابة API غير صالحة أو فارغة.");
+                    }
+
+                    const responseText = data.candidates[0].content.parts[0].text;
+                    let responseParts = responseText.split('الإيموجي:');
+                    let resultParts = responseParts[0].split('الفوز:');
+                    let resultText = resultParts[0].replace('النتيجة:', '').trim();
+                    let isWin = resultParts[1]?.trim() === 'صحيح';
+                    let suggestedEmoji = responseParts[1]?.trim() || emoji || "❓";
+
+                    // تحديث العدادات
+                    if (isWin) {
+                        currentStreak++;
+                        if (currentStreak > highScore) {
+                            highScore = currentStreak;
+                            localStorage.setItem('highScore', highScore);
+                        }
+                    } else {
+                        currentStreak = 0;
+                    }
+                    updateScoreDisplay();
+
+                    // تحديث واجهة المستخدم
+                    document.getElementById("currentElement").innerHTML = suggestedEmoji + ' ' + userChoice;
+                    current = userChoice;
+                    currentEmoji = suggestedEmoji;
+
+                    result.innerHTML = resultText;
+                    hint.innerHTML = `اختر شيئًا أقوى من ${userChoice}`;
+                    document.getElementById("userInput").value = "";
+                })
+                .catch(err => {
+                    console.error("Error:", err);
+                    result.innerHTML = `حدث خطأ: ${err.message}. تحقق من مفتاح API أو اتصال الشبكة.`;
+                });
+        }
+    </script>
+</body>
+</html>
